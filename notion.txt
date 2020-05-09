@@ -1,0 +1,23 @@
+there are actually these global variable to control song
+
+    song_array // the information of what to play
+    play_sound // to control whether we want to play sound or not from outside funcion
+    taiko_on // to know wheter to show the taiko pattern or not
+the sound playing + song info display will be wrap up in a function and in a thread
+
+
+there is another thread with higher priority, when we want to pause a song
+we push a swich->causing an interrupt -> change "play_sound" to false
+-> add an function into the eventqueue of thread 
+
+this function will have an infinite loop, it will keep detecting whether we scroll, 
+push the switch, if we go into the song selection mode, we will enter an sub-infinite loop.
+The song selection is actually modify the global variable :song_array".
+After finishing all the task, we will just return();
+
+
+There is only one song in the Taiko game mode, in this mode
+we will enable the taiko_on, so there will be taiko pattern
+
+the taiko pattern will change per second, if in a second, we hit 
+then will add one point
