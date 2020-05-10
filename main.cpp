@@ -11,10 +11,17 @@
 #include "mbed.h"
 #include "DA7212.h"
 #include "uLCD_4DGL.h"
+#include <cmath>
 
-Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
+Serial pc(USBTX, USBRX);
+DA7212 audio;
+// the thread to run the dnn independently
+Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/); 
+// the thread for mode selection and song selection
 Thread selection_thread(osPriorityBelowNormal, 50 * 1024 /*50K stack size*/);
+// the thread to use to play note
 Thread song_thread(osPriorityLow);
+// the thread to judge if we hit the taiko note
 Thread taiko_thread(osPriorityLow);
 
 EventQueue selection_queue(32 * EVENTS_EVENT_SIZE);
@@ -22,20 +29,34 @@ EventQueue song_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue taiko_queue(32 * EVENTS_EVENT_SIZE);
 
 uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
-InterruptIn button(SW2); // use to pause the song
+InterruptIn sw2(SW2); // use to pause the song
+DigitalIn sw3(SW3);
 
-int which_modeORsong; // control by DNN, will be 0, 1, 2
-
-int tone_array[3][10];
-char taiko_array[13];
+int which_modeORsong; // control by DNN, will be 0, 1, 2, 3, 4
+bool song_set = true; // the song set, and there is 2 set, each set with 3 songs
+int tone_array[4][10] = 
+{{330, 294, 262, 294, 330, 350, 392, 440, 494, 524},
+{0,0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0,0},
+{0,0,0,0,0,0,0,0,0,0}
+} 
+// there is 4 song and with each have total 10 notes
+char taiko_array[13] = 
+{'a', 'b', 'b', 'a', 'b', 'b', 'a', 'a', 'b', 'a', '\0', '\0', '\0'};
+// the taiko_array note array, and will be 'a' or 'b'
 bool taiko_hit;
-int *table;
+// to record that we hit the taiko note or not
+
 bool play_on = true;
 bool taiko_on = false;
-int which_song = 0;
+int which_song = 0; // will be 0, 1, 2, 3
+// when we select a song we will give this variable a value
+// maybe depend on which_modeORsong
+
 void taiko_hit_judge(char taiko_note);
 void playNote(int freq);
 void pause(void); 
+// to be triggered after interrupt
 
 void mode_selection(void);
 void song_selection(void);
@@ -51,16 +72,16 @@ int main(void)
     selection_thread.start(callback(&selection_queue, &EventQueue::dispatch_forever));
     song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
     taiko_thread.start(callback(&taiko_queue, &EventQueue::dispatch_forever));
-    button.rise(&pause);
+    sw2.rise(&pause);
 
-    
     // the infinite loop to wait for plaing music
     while (1) {
         int i;
         int taiko_score;
-
+        
         // if the play_on is false, we will jumpt out from this song immediately
         for (i = 0, taiko_hit = 0, taiko_score = 0; i < 10 && play_on; i++) {
+            uLCD.reset();
             uLCD.printf("\n Now playing sond: %d \n", which_song); 
             if (taiko_on)
                 uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
@@ -76,7 +97,6 @@ int main(void)
             taiko_queue.cancel(idC); // cancel the task
             
             if (taiko_hit) taiko_score++;
-            uLCD.reset();
         }
         // i == 10 means that the songs complete without interrupt
         // so we have to manually turn off the song
@@ -241,14 +261,14 @@ void DNN(void)
         if (gesture_index < label_num) {
             error_reporter->Report(config.output_message[gesture_index]);
             if (gesture_index == 0) {
-                if (which_modeORsong == 2)
+                if (which_modeORsong == 4)
                     which_modeORsong = 0;
                 else
                     which_modeORsong++;
             }
             else {
                 if (which_modeORsong == 0)
-                    which_modeORsong = 2;
+                    which_modeORsong = 4;
                 else
                     which_modeORsong--;
             }
@@ -283,4 +303,97 @@ void taiko_hit_judge(char taiko_note)
         (x * x + y * y) > 650) {
             taiko_hit = true;
     }
+}
+
+void mode_selection(void) 
+{
+    uLCD.reset();
+    while (1) {
+        if (which_modeORsong == 0)
+            uLCD.printf("^forward\n backward\n change songs\n load song\n taiko mode\n");
+        else if (which_modeORsong == 1)
+            uLCD.printf(" forward\n^backward\n change songs\n load song\n taiko mode\n");
+        else if (which_modeORsong == 2)
+            uLCD.printf(" forward\n backward\n^change songs\n load song\n taiko mode\n");
+        else if (which_modeORsong == 3)
+            uLCD.printf(" forward\n backward\n change songs\n^load song\n taiko mode\n");
+        else 
+            uLCD.printf(" forward\n backward\n change songs\n^load song\n^taiko mode\n");
+
+        if (sw3 == 0) {// if the button been pressed
+            if (which_modeORsong == 0) { // forward
+                if (which_song == 3)
+                    which_song = 0;
+                else
+                    which_song++;
+                play_on = true;
+                return;
+            }
+            else if (which_modeORsong == 1) { // backward
+                if (which_song == 0)
+                    which_song = 3;
+                else
+                    which_song--;
+                play_on = true;
+                return;
+            }
+            else if (which_modeORsong == 2)  {// change songs
+                selection_queue.call(song_selection);
+                return;
+            }
+            else if (which_modeORsong == 3) { // load songs
+                int i = 0;
+                char serialInBuffer[4];
+                int serialCount = 0;
+
+                while(i < 30) { // 30 is number of total notes
+                    if(pc.readable()) {
+                        serialInBuffer[serialCount] = pc.getc();
+                        serialCount++;
+                        if(serialCount == 3) {
+                            serialInBuffer[serialCount] = '\0';
+                            *(tone_array[1] + i) = (int) atoi(serialInBuffer);
+                            serialCount = 0;
+                            i++;
+                        }
+                    }
+                }
+            }
+            else {// taiko mode
+                which_song = 0;
+                taiko_on = true;
+                play_on = true;
+                return;
+            }
+        }
+        wait(0.1);
+        uLCD.reset();
+    }
+}
+
+void song_selection(void)
+{
+    uLCD.reset();
+    while (1) {
+        if (which_modeORsong == 0)
+            uLCD.printf("^song1\n song2\n song3\n song4\n");
+        else if (which_modeORsong == 1)
+            uLCD.printf(" song1\n^song2\n song3\n song4\n");
+        else if (which_modeORsong == 2)
+            uLCD.printf(" song1\n song2\n^song3\n song4\n");
+        else 
+            uLCD.printf(" song1\n song2\n song3\n^song4\n");
+
+        if (sw3 == 0) {// if the button been pressed
+            switch (which_modeORsong) {
+                case 0: which_song = 0; break;
+                case 1; which_song = 1; break;
+                case 2: which_song = 2; break;
+                default: which_song = 3; 
+            }
+            play_on = true;
+            return ;
+        }
+        wait(0.1);
+        uLCD.reset();
 }
