@@ -52,6 +52,7 @@ bool taiko_hit;
 // to record that we hit the taiko note or not
 int taiko_score;
 
+bool play_on = true;
 bool taiko_on = true;
 int which_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
@@ -77,7 +78,7 @@ int main(void)
     song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
     judge_thread.start(callback(&judge_queue, &EventQueue::dispatch_forever));
     sw2.rise(&pause);
-    music_thread.call(music);
+    music_queue.call(music);
     
     // the infinite loop to wait for plaing music
        // Create an area of memory to use for input, output, and intermediate arrays.
@@ -201,11 +202,12 @@ int main(void)
         }
     }
 }
+
 void music(void)
 {
     int i;
     // if the play_on is false, we will jumpt out from this song immediately
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < 10 && play_on; i++) {
         if (i == 0) {
             uLCD.cls();
             uLCD.printf("\nNow playing song%d \n", which_song); 
@@ -217,12 +219,13 @@ void music(void)
             song_queue.call(playNote, tone_array[which_song][i]);
         wait(1.0);
     }
-
-    song_queue.call(playNote, 0);
-    uLCD.cls();
-    uLCD.printf("\nSong %d is over\n", which_song);
-    if (taiko_on) {
-        uLCD.printf("Final score is %d\n", taiko_score);
+    if (play_on) {
+        song_queue.call(playNote, 0);
+        uLCD.cls();
+        uLCD.printf("\nSong %d is over\n", which_song);
+        if (taiko_on) {
+            uLCD.printf("Final score is %d\n", taiko_score);
+        }
     }
 }
 
@@ -294,8 +297,8 @@ void playNote(int freq)
 void pause(void) 
 {
     song_queue.call(playNote, 0);
-    play_on = false;
     taiko_on = false;
+    play_on = false;
     selection_queue.call(&mode_selection);
 }
 
@@ -336,6 +339,7 @@ void mode_selection(void)
                 else
                     which_song = 0;
                 taiko_on = false;
+                play_on = true;
                 music_thread.call(music);
                 return;
             }
@@ -343,8 +347,9 @@ void mode_selection(void)
                 if (which_song == 0)
                     which_song = 3;
                 else
-                    which_song--;+
+                    which_song--;
                 taiko_on = false;
+                play_on = true;
                 music_thread.call(music);
                 return;
             }
@@ -373,6 +378,7 @@ void mode_selection(void)
             else {// taiko mode
                 which_song = 0;
                 taiko_on = true;
+                play_on = true;
                 music_thread.call(music);
                 return;
             }
@@ -402,6 +408,7 @@ void song_selection(void)
                 default: which_song = 3; 
             }
             taiko_on = false;
+            play_on = true;
             music_thread.call(music);
             return;
         }
