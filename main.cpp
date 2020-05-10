@@ -340,7 +340,7 @@ void mode_selection(void)
                     which_song = 0;
                 taiko_on = false;
                 play_on = true;
-                music_thread.call(music);
+                music_queue.call(music);
                 return;
             }
             else if (which_modeORsong == 1) { // backward
@@ -350,7 +350,7 @@ void mode_selection(void)
                     which_song--;
                 taiko_on = false;
                 play_on = true;
-                music_thread.call(music);
+                music_queue.call(music);
                 return;
             }
             else if (which_modeORsong == 2)  {// change songs
@@ -379,7 +379,7 @@ void mode_selection(void)
                 which_song = 0;
                 taiko_on = true;
                 play_on = true;
-                music_thread.call(music);
+                music_queue.call(music);
                 return;
             }
         }
@@ -409,7 +409,7 @@ void song_selection(void)
             }
             taiko_on = false;
             play_on = true;
-            music_thread.call(music);
+            music_queue.call(music);
             return;
         }
         wait(0.1);
