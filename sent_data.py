@@ -13,7 +13,10 @@ serdev = '/dev/ttyACM0'
 formatter = lambda x: "%d" % x
 
 s = serial.Serial(serdev)
+s.write(bytes('z', 'UTF-8'))
+
 for data in songset[which_set]:
   s.write(bytes(formatter(data), 'UTF-8'))
   time.sleep(waitTime)
 s.close()
+print("data transmit complete")

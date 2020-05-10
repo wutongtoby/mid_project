@@ -16,11 +16,12 @@
 Serial pc(USBTX, USBRX);
 DA7212 audio;
 
+Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
 // the thread for mode selection and song selection
-Thread selection_thread(osPriorityNormal, 50 * 1024 /*50K stack size*/);
+Thread selection_thread(osPriorityNormal);
 // the thread to use to play note
 Thread song_thread;
-Thread music_thread(osPriorityNormal, 50 * 1024 /*50K stack size*/);
+Thread music_thread(osPriorityNormal);
 
 // the thread to judge if we hit the taiko note
 Thread taiko_thread(osPriorityHigh);
@@ -30,7 +31,7 @@ EventQueue selection_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue song_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue judge_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue music_queue(32 * EVENTS_EVENT_SIZE);
-
+EventQueue taiko_queue(32 * EVENTS_EVENT_SIZE);
 
 uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
 InterruptIn sw2(SW2); // use to pause the song
@@ -70,6 +71,7 @@ void song_selection(void);
 int PredictGesture(float* output);
 int16_t waveform[kAudioTxBufferSize];
 extern float x, y, z;
+void DNN(void);
 
 int main(void) 
 {
@@ -77,11 +79,17 @@ int main(void)
     selection_thread.start(callback(&selection_queue, &EventQueue::dispatch_forever));
     song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
     judge_thread.start(callback(&judge_queue, &EventQueue::dispatch_forever));
+    taiko_thread.start(callback(&taiko_queue, &EventQueue::dispatch_forever));
     sw2.rise(&pause);
+    DNN_thread.start(&DNN);
+
     music_queue.call(music);
-    
-    // the infinite loop to wait for plaing music
-       // Create an area of memory to use for input, output, and intermediate arrays.
+    while(true);
+}
+
+void DNN(void)
+{
+    // Create an area of memory to use for input, output, and intermediate arrays.
     // The size of this will depend on the model you're using, and may need to be
     // determined by experimentation.
     constexpr int kTensorArenaSize = 60 * 1024;
@@ -199,8 +207,11 @@ int main(void)
                 else
                     which_modeORsong--;
             }
+            
         }
     }
+    
+    //while (true);
 }
 
 void music(void)
@@ -212,7 +223,7 @@ void music(void)
             uLCD.cls();
             uLCD.printf("\nNow playing song%d \n", which_song); 
             if (taiko_on)
-                taiko_thread.start(&taiko);
+                taiko_queue.call(taiko);
         }   
             // the loop below will play the note for the duration of 1s
         for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) 
@@ -318,7 +329,6 @@ void taiko_hit_judge(char taiko_note)
 
 void mode_selection(void) 
 {
-    int i = 0;
     while (1) {
         uLCD.cls();
         if (which_modeORsong == 0)
@@ -330,7 +340,7 @@ void mode_selection(void)
         else if (which_modeORsong == 3)
             uLCD.printf(" forward\n backward\n change songs\n^load song\n taiko mode\n");
         else 
-            uLCD.printf(" forward\n backward\n change songs\n^load song\n^taiko mode\n");
+            uLCD.printf(" forward\n backward\n change songs\n load song\n^taiko mode\n");
     
         if (sw3 == 0) {// if the button been pressed
             if (which_modeORsong == 0) { // forward
@@ -361,14 +371,15 @@ void mode_selection(void)
                 int i = 0;
                 char serialInBuffer[4];
                 int serialCount = 0;
-
+                while (pc.getc() == 'z');
                 while(i < 30) { // 30 is number of total notes
                     if(pc.readable()) {
                         serialInBuffer[serialCount] = pc.getc();
                         serialCount++;
                         if(serialCount == 3) {
                             serialInBuffer[serialCount] = '\0';
-                            *(tone_array[1] + i) = (int) atoi(serialInBuffer);
+                            tone_array[1][i] = (int) atoi(serialInBuffer);
+                            printf("%d\r\n", tone_array[1][i]);
                             serialCount = 0;
                             i++;
                         }
@@ -383,7 +394,7 @@ void mode_selection(void)
                 return;
             }
         }
-        wait(0.5);
+        wait(0.1);
     }
 }
 
