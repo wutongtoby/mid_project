@@ -13,17 +13,27 @@
 #include "uLCD_4DGL.h"
 
 Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
+Thread selection_thread(osPriorityBelowNormal, 50 * 1024 /*50K stack size*/);
+Thread song_thread(osPriorityLow);
+
+EventQueue selection_queue(32 * EVENTS_EVENT_SIZE);
+EventQueue song_queue(32 * EVENTS_EVENT_SIZE);
+
 uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
+InterruptIn button(SW2); // use to pause the song
 
 int which_modeORsong; // control by DNN, will be 0, 1, 2
 
 int tone_array[3][10];
 char taiko_array[13];
+char taiko_result[10];
+bool taiko_hit;
 int *table;
 bool play_on = true;
 bool taiko_on = false;
 int which_song = 0;
 
+void playNote(int freq);
 void pause(void); 
 
 void mode_selection(void);
@@ -32,10 +42,15 @@ void song_selection(void);
 int PredictGesture(float* output);
 void DNN(void);
 
+extern float x, y, z;
 
-int main(void) {
+int main(void) 
+{
     DNN_thread.start(DNN);
-    
+    selection_thread.start(callback(&selection_queue, &EventQueue::dispatch_forever));
+    song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
+    button.rise(&pause);
+
     // the infinite loop to wait for plaing music
     while (1) {
         // if the play_on is false, we will jumpt out from this song immediately
@@ -45,16 +60,20 @@ int main(void) {
                 uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
             // the loop below will play the note for the duration of 1s
             for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) {
-                queue.call(playNote, tone_array[which_song][i]);
+                song_queue.call(playNote, tone_array[which_song][i]);
             }
+            taiko_hit = false;
+            // call_every 0.2 second
             wait(1.0);
+            // cancel the command 
             uLCD.reset();
         }
     }
 }
 
 // Return the result of the last prediction
-int PredictGesture(float* output) {
+int PredictGesture(float* output) 
+{
     // How many times the most recent gesture has been matched in a row
     static int continuous_count = 0;
     // The result of the last prediction
@@ -94,7 +113,8 @@ int PredictGesture(float* output) {
     return this_predict;
 }
 
-void DNN(void) {
+void DNN(void) 
+{
     // Create an area of memory to use for input, output, and intermediate arrays.
     // The size of this will depend on the model you're using, and may need to be
     // determined by experimentation.
@@ -215,5 +235,20 @@ void DNN(void) {
             }
         }
     }
+}
+
+void playNote(int freq) 
+{
+    for(int i = 0; i < kAudioTxBufferSize; i++) {
+        waveform[i] = (int16_t) (sin((double)i * 2. * M_PI/(double) (kAudioSampleFrequency / freq)) * ((1<<16) - 1));
+    }
+    audio.spk.play(waveform, kAudioTxBufferSize);
+}
+
+void pause(void) 
+{
+    play_on = false;
+    taiko_on = false;
+    selection_queue.call(&mode_selection);
 }
 
