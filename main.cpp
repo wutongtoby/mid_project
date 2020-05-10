@@ -8,8 +8,50 @@
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/version.h"
+#include "mbed.h"
+#include "DA7212.h"
+#include "uLCD_4DGL.h"
 
-Thread t1(osPriorityNormal, 120 * 1024 /*120K stack size*/);
+Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
+uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
+
+int which_modeORsong; // control by DNN, will be 0, 1, 2
+
+int tone_array[3][10];
+char taiko_array[13];
+int *table;
+bool play_on = true;
+bool taiko_on = false;
+int which_song = 0;
+
+void pause(void); 
+
+void mode_selection(void);
+void song_selection(void);
+
+int PredictGesture(float* output);
+void DNN(void);
+
+
+int main(void) {
+    DNN_thread.start(DNN);
+    
+    // the infinite loop to wait for plaing music
+    while (1) {
+        // if the play_on is false, we will jumpt out from this song immediately
+        for (int i = 0; i < 10 && play_on; i++) {
+            uLCD.printf("\n Now playing sond: %d \n", which_song); 
+            if (taiko_on)
+                uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
+            // the loop below will play the note for the duration of 1s
+            for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) {
+                queue.call(playNote, tone_array[which_song][i]);
+            }
+            wait(1.0);
+            uLCD.reset();
+        }
+    }
+}
 
 // Return the result of the last prediction
 int PredictGesture(float* output) {
@@ -51,7 +93,6 @@ int PredictGesture(float* output) {
 
     return this_predict;
 }
-
 
 void DNN(void) {
     // Create an area of memory to use for input, output, and intermediate arrays.
@@ -156,11 +197,23 @@ void DNN(void) {
         should_clear_buffer = gesture_index < label_num;
 
         // Produce an output
+        // the gestrue_index returned by the PredictGesture() will return label_num
+        // if it did'nt detect anything
         if (gesture_index < label_num) {
             error_reporter->Report(config.output_message[gesture_index]);
+            if (gesture_index == 0) {
+                if (which_modeORsong == 2)
+                    which_modeORsong = 0;
+                else
+                    which_modeORsong++;
+            }
+            else {
+                if (which_modeORsong == 0)
+                    which_modeORsong = 2;
+                else
+                    which_modeORsong--;
+            }
         }
     }
 }
-int main(void) {
-    t1.start(DNN);
-}
+

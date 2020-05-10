@@ -9,9 +9,8 @@
 // maybe length_array, onte_array, can just be 2-dimensional array
 // so that we just need to indicate which 1-dimensional array we want to play?
 
-int *length_array;
-int *tone_array;
-int number_of_note;
+int length_array[3][10];
+int tone_array[3][10];
 int *table;
 bool play_on, taiko_on;
 void sound_and_ulcd(void); 
