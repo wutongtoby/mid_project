@@ -1,0 +1,22 @@
+BUILD/K66F/GCC_ARM-AUDIO/mbed-os/components/TARGET_PSA/services/platform/COMPONENT_PSA_SRV_IMPL/platform_srv_impl.o: \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/services/platform/COMPONENT_PSA_SRV_IMPL/platform_srv_impl.c \
+ BUILD/K66F/GCC_ARM-AUDIO/mbed_config.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/inc/psa/lifecycle.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_toolchain.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_preprocessor.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/inc/psa/error.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/inc/psa/internal_trusted_storage.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/services/storage/its/psa_prot_internal_storage.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/inc/psa/storage_common.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/services/platform/COMPONENT_PSA_SRV_IMPL/platform_srv_impl.h \
+ /home/wutong/ee2405/mbed-os/components/TARGET_PSA/inc/psa/client.h \
+ /home/wutong/ee2405/mbed-os/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/device/cmsis.h \
+ /home/wutong/ee2405/mbed-os/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/device/fsl_device_registers.h \
+ /home/wutong/ee2405/mbed-os/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/device/MK66F18.h \
+ /home/wutong/ee2405/mbed-os/cmsis/TARGET_CORTEX_M/core_cm4.h \
+ /home/wutong/ee2405/mbed-os/cmsis/TARGET_CORTEX_M/cmsis_version.h \
+ /home/wutong/ee2405/mbed-os/cmsis/TARGET_CORTEX_M/cmsis_compiler.h \
+ /home/wutong/ee2405/mbed-os/cmsis/TARGET_CORTEX_M/cmsis_gcc.h \
+ /home/wutong/ee2405/mbed-os/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/device/system_MK66F18.h \
+ /home/wutong/ee2405/mbed-os/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/device/MK66F18_features.h \
+ /home/wutong/ee2405/mbed-os/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/device/cmsis_nvic.h

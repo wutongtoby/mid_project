@@ -1,0 +1,25 @@
+BUILD/K66F/GCC_ARM-AUDIO/mbed-os/features/nanostack/mbed-mesh-api/source/mesh_system.o: \
+ /home/wutong/ee2405/mbed-os/features/nanostack/mbed-mesh-api/source/mesh_system.c \
+ BUILD/K66F/GCC_ARM-AUDIO/mbed_config.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack-eventloop/nanostack-event-loop/eventOS_scheduler.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/nanostack-libservice/mbed-client-libservice/ns_types.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack-eventloop/nanostack-event-loop/eventOS_event.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/nanostack-libservice/mbed-client-libservice/ns_list.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/nanostack-libservice/mbed-client-libservice/ns_types.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack/nanostack/net_interface.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack/nanostack/platform/arm_hal_phy.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/nanostack-libservice/mbed-client-libservice/nsdynmemLIB.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/mbed-client-randlib/mbed-client-randlib/randLIB.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack-eventloop/nanostack-event-loop/platform/arm_hal_timer.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack-eventloop/nanostack-event-loop/platform/eventloop_config.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/nanostack-hal-mbed-cmsis-rtos/ns_hal_init.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/mbed-mesh-api/source/include/mesh_system.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack-eventloop/nanostack-event-loop/eventOS_scheduler.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_assert.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_toolchain.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_preprocessor.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_error.h \
+ /home/wutong/ee2405/mbed-os/platform/mbed_retarget.h \
+ /home/wutong/ee2405/mbed-os/features/nanostack/sal-stack-nanostack/nanostack/ns_file_system.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/nanostack-libservice/mbed-client-libservice/ns_trace.h \
+ /home/wutong/ee2405/mbed-os/features/frameworks/mbed-trace/mbed-trace/mbed_trace.h
