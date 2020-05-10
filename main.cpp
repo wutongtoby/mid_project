@@ -15,26 +15,28 @@
 
 Serial pc(USBTX, USBRX);
 DA7212 audio;
-// the thread to run the dnn independently
-Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/); 
+
 // the thread for mode selection and song selection
 Thread selection_thread(osPriorityNormal, 50 * 1024 /*50K stack size*/);
 // the thread to use to play note
 Thread song_thread;
+Thread music_thread(osPriorityNormal, 50 * 1024 /*50K stack size*/);
+
 // the thread to judge if we hit the taiko note
-Thread taiko_thread(osPriorityLow);
-Thread judge_thread(osPriorityLow);
+Thread taiko_thread(osPriorityHigh);
+Thread judge_thread(osPriorityNormal);
 
 EventQueue selection_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue song_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue judge_queue(32 * EVENTS_EVENT_SIZE);
+EventQueue music_queue(32 * EVENTS_EVENT_SIZE);
+
 
 uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
 InterruptIn sw2(SW2); // use to pause the song
 DigitalIn sw3(SW3);
 
 int which_modeORsong; // control by DNN, will be 0, 1, 2, 3, 4
-bool song_set = true; // the song set, and there is 2 set, each set with 3 songs
 int tone_array[4][10] = 
 {{330, 294, 262, 294, 330, 350, 392, 440, 494, 524},
 {0,0,0,0,0,0,0,0,0,0},
@@ -50,8 +52,7 @@ bool taiko_hit;
 // to record that we hit the taiko note or not
 int taiko_score;
 
-bool play_on = true;
-bool taiko_on = false;
+bool taiko_on = true;
 int which_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
 // maybe depend on which_modeORsong
@@ -60,115 +61,26 @@ void taiko_hit_judge(char taiko_note);
 void playNote(int freq);
 void pause(void); 
 // to be triggered after interrupt
+void music(void);
 
 void mode_selection(void);
 void song_selection(void);
 
 int PredictGesture(float* output);
-void DNN(void);
 int16_t waveform[kAudioTxBufferSize];
 extern float x, y, z;
 
 int main(void) 
 {
-    //DNN_thread.start(DNN);
+    music_thread.start(callback(&music_queue, &EventQueue::dispatch_forever));
     selection_thread.start(callback(&selection_queue, &EventQueue::dispatch_forever));
     song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
     judge_thread.start(callback(&judge_queue, &EventQueue::dispatch_forever));
     sw2.rise(&pause);
-
+    music_thread.call(music);
+    
     // the infinite loop to wait for plaing music
-    while (1) {
-        int i;
-
-        // if the play_on is false, we will jumpt out from this song immediately
-        for (i = 0, taiko_hit = 0, taiko_score = 0; i < 10 && play_on; i++) {
-            if (i == 0) {
-                uLCD.cls();
-                uLCD.printf("\nNow playing song%d \n", which_song); 
-                if (taiko_on)
-                  taiko_thread.start(&taiko);
-            }
-            // the loop below will play the note for the duration of 1s
-            for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) {
-                song_queue.call(playNote, tone_array[which_song][i]);
-            }
-            wait(1.0);
-        }
-        // i == 10 means that the songs complete without interrupt
-        // so we have to manually turn off the song
-        if (i == 10 && play_on) {
-            song_queue.call(playNote, 0);
-            uLCD.cls();
-            play_on = false; // manually turn off
-            uLCD.printf("\nSong %d is over\n", which_song);
-            if (taiko_on) {
-                uLCD.printf("The final score is %d\n", taiko_score);
-                taiko_on = false; 
-            }
-        }
-    }
-}
-
-void taiko(void)
-{
-    int i;
-    for (i = 0, taiko_score = 0; i < 10 && play_on; i++) {
-        uLCD.cls();
-        uLCD.printf("\nNow playing song%d \n", which_song); 
-        uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
-        taiko_hit = false;
-        int idC = judge_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
-        wait(1.0);
-        judge_queue.cancel(idC);
-        if (taiko_hit) taiko_score++;
-    }
-}
-// Return the result of the last prediction
-int PredictGesture(float* output)  
-{
-    // How many times the most recent gesture has been matched in a row
-    static int continuous_count = 0;
-    // The result of the last prediction
-    static int last_predict = -1;
-
-    // Find whichever output has a probability > 0.8 (they sum to 1)
-    int this_predict = -1;
-    for (int i = 0; i < label_num; i++) {
-        if (output[i] > 0.8) this_predict = i;
-    }
-
-    // No gesture was detected above the threshold
-    if (this_predict == -1) {
-        continuous_count = 0;
-        last_predict = label_num;
-        return label_num;
-    }
-
-    if (last_predict == this_predict) {
-        continuous_count += 1;
-    } 
-    else {
-        continuous_count = 0;
-    }
-    last_predict = this_predict;
-
-    // If we haven't yet had enough consecutive matches for this gesture,
-    // report a negative result
-    if (continuous_count < config.consecutiveInferenceThresholds[this_predict]) {
-        return label_num;
-    }
-    // Otherwise, we've seen a positive result, so clear all our variables
-    // and report it
-    continuous_count = 0;
-    last_predict = -1;
-
-    return this_predict;
-}
-
-void DNN(void) 
-{
-    // Create an area of memory to use for input, output, and intermediate arrays.
+       // Create an area of memory to use for input, output, and intermediate arrays.
     // The size of this will depend on the model you're using, and may need to be
     // determined by experimentation.
     constexpr int kTensorArenaSize = 60 * 1024;
@@ -289,6 +201,87 @@ void DNN(void)
         }
     }
 }
+void music(void)
+{
+    int i;
+    // if the play_on is false, we will jumpt out from this song immediately
+    for (i = 0; i < 10; i++) {
+        if (i == 0) {
+            uLCD.cls();
+            uLCD.printf("\nNow playing song%d \n", which_song); 
+            if (taiko_on)
+                taiko_thread.start(&taiko);
+        }   
+            // the loop below will play the note for the duration of 1s
+        for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) 
+            song_queue.call(playNote, tone_array[which_song][i]);
+        wait(1.0);
+    }
+
+    song_queue.call(playNote, 0);
+    uLCD.cls();
+    uLCD.printf("\nSong %d is over\n", which_song);
+    if (taiko_on) {
+        uLCD.printf("Final score is %d\n", taiko_score);
+    }
+}
+
+void taiko(void)
+{
+    int i;
+    for (i = 0, taiko_score = 0; i < 10 && play_on; i++) {
+        uLCD.cls();
+        uLCD.printf("\nNow playing song%d \n", which_song); 
+        uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
+        taiko_hit = false;
+        int idC = judge_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
+        wait(1.0);
+        judge_queue.cancel(idC);
+        if (taiko_hit) taiko_score++;
+    }
+}
+// Return the result of the last prediction
+int PredictGesture(float* output)  
+{
+    // How many times the most recent gesture has been matched in a row
+    static int continuous_count = 0;
+    // The result of the last prediction
+    static int last_predict = -1;
+
+    // Find whichever output has a probability > 0.8 (they sum to 1)
+    int this_predict = -1;
+    for (int i = 0; i < label_num; i++) {
+        if (output[i] > 0.8) this_predict = i;
+    }
+
+    // No gesture was detected above the threshold
+    if (this_predict == -1) {
+        continuous_count = 0;
+        last_predict = label_num;
+        return label_num;
+    }
+
+    if (last_predict == this_predict) {
+        continuous_count += 1;
+    } 
+    else {
+        continuous_count = 0;
+    }
+    last_predict = this_predict;
+
+    // If we haven't yet had enough consecutive matches for this gesture,
+    // report a negative result
+    if (continuous_count < config.consecutiveInferenceThresholds[this_predict]) {
+        return label_num;
+    }
+    // Otherwise, we've seen a positive result, so clear all our variables
+    // and report it
+    continuous_count = 0;
+    last_predict = -1;
+
+    return this_predict;
+}
+
 
 void playNote(int freq) 
 {
@@ -342,16 +335,17 @@ void mode_selection(void)
                     which_song = 0;
                 else
                     which_song = 0;
-                play_on = true;
-                audio.spk.play();
+                taiko_on = false;
+                music_thread.call(music);
                 return;
             }
             else if (which_modeORsong == 1) { // backward
                 if (which_song == 0)
                     which_song = 3;
                 else
-                    which_song--;
-                play_on = true;
+                    which_song--;+
+                taiko_on = false;
+                music_thread.call(music);
                 return;
             }
             else if (which_modeORsong == 2)  {// change songs
@@ -379,11 +373,10 @@ void mode_selection(void)
             else {// taiko mode
                 which_song = 0;
                 taiko_on = true;
-                play_on = true;
+                music_thread.call(music);
                 return;
             }
         }
-    
         wait(0.5);
     }
 }
@@ -408,8 +401,9 @@ void song_selection(void)
                 case 2: which_song = 2; break;
                 default: which_song = 3; 
             }
-            play_on = true;
-            return ;
+            taiko_on = false;
+            music_thread.call(music);
+            return;
         }
         wait(0.1);
         uLCD.cls();
