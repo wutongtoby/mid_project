@@ -15,9 +15,11 @@
 Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
 Thread selection_thread(osPriorityBelowNormal, 50 * 1024 /*50K stack size*/);
 Thread song_thread(osPriorityLow);
+Thread taiko_thread(osPriorityLow);
 
 EventQueue selection_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue song_queue(32 * EVENTS_EVENT_SIZE);
+EventQueue taiko_queue(32 * EVENTS_EVENT_SIZE);
 
 uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
 InterruptIn button(SW2); // use to pause the song
@@ -26,13 +28,12 @@ int which_modeORsong; // control by DNN, will be 0, 1, 2
 
 int tone_array[3][10];
 char taiko_array[13];
-char taiko_result[10];
 bool taiko_hit;
 int *table;
 bool play_on = true;
 bool taiko_on = false;
 int which_song = 0;
-
+void taiko_hit_judge(char taiko_note);
 void playNote(int freq);
 void pause(void); 
 
@@ -49,12 +50,17 @@ int main(void)
     DNN_thread.start(DNN);
     selection_thread.start(callback(&selection_queue, &EventQueue::dispatch_forever));
     song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
+    taiko_thread.start(callback(&taiko_queue, &EventQueue::dispatch_forever));
     button.rise(&pause);
 
+    
     // the infinite loop to wait for plaing music
     while (1) {
+        int i;
+        int taiko_score;
+
         // if the play_on is false, we will jumpt out from this song immediately
-        for (int i = 0; i < 10 && play_on; i++) {
+        for (i = 0, taiko_hit = 0, taiko_score = 0; i < 10 && play_on; i++) {
             uLCD.printf("\n Now playing sond: %d \n", which_song); 
             if (taiko_on)
                 uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
@@ -62,11 +68,24 @@ int main(void)
             for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) {
                 song_queue.call(playNote, tone_array[which_song][i]);
             }
+            
+            // set the initial value to false
             taiko_hit = false;
-            // call_every 0.2 second
+            int idC = taiko_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
             wait(1.0);
-            // cancel the command 
+            taiko_queue.cancel(idC); // cancel the task
+            
+            if (taiko_hit) taiko_score++;
             uLCD.reset();
+        }
+        // i == 10 means that the songs complete without interrupt
+        // so we have to manually turn off the song
+        if (i == 10) {
+            play_on = false; // manually turn off
+            if (taiko_on) {
+                uLCD.printf("the final score is %d\n", taiko_score);
+                taiko_on = false; // turn this off, so that we just print one time
+            }
         }
     }
 }
@@ -252,3 +271,16 @@ void pause(void)
     selection_queue.call(&mode_selection);
 }
 
+void taiko_hit_judge(char taiko_note)
+{
+    // if tilt and not moving than we hit a
+    if (taiko_note == 'a' && x * x + y * y > z * z && 
+        (x * x + y * y) <= 650) {
+            taiko_hit = true;
+    }
+    // if not tilt but moving than we hit b
+    if (taiko_note == 'b' && x * x + y * y <= z * z && 
+        (x * x + y * y) > 650) {
+            taiko_hit = true;
+    }
+}
