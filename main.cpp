@@ -46,7 +46,7 @@ InterruptIn sw2(SW2); // use to pause the song
 DigitalIn sw3(SW3);
 
 Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
-Thread sound_thread; // thread for playing single sound
+Thread sound_thread(osPriorityNormal); // thread for playing single sound
 Thread song_mode_thread(osPriorityNormal); // thead for playing song and selection mode
 Thread judge_thread(osPriorityNormal); // thread for taiko judgement
 
@@ -56,7 +56,7 @@ EventQueue judge_queue(32 * EVENTS_EVENT_SIZE);
 
 
 
-int DNN_mode; // control by DNN, will be 0, 1, 2, 3, 4
+int DNN_mode = 3; // control by DNN, will be 0, 1, 2, 3, 4
 int DNN_song; // control by DNN, will be 0, 1, 2, 3
 int tone_array[4][10] = 
 {{E4, D4, C4, D4, E4, F4, G4, A4, B4, C5},
@@ -65,8 +65,8 @@ int tone_array[4][10] =
 {A4 , B4, CS5, B4, A4, GS4, FS4, GS4, A4, B4}
 };
 
-char taiko_array[15] = {'t', 's', 's', 's', 't', 't', 't', 't', 't', 's', ' ', ' ', ' ', ' ', ' '};
-// the taiko_array note array, and will be 'a' or 'b'
+char taiko_array[15] = {'t', 'f', 'f', 'f', 't', 't', 't', 't', 't', 'f', ' ', ' ', ' ', ' ', ' '};
+// the taiko_array note array
 
 bool play_on = true;
 bool taiko_on = true;
@@ -258,8 +258,8 @@ void music(void)
         
         if (taiko_on) {
             for (j = 0, taiko_hit = false; j < 5; j++) {
-                if (taiko_array[i] == 't' && x * x + y * y > z * z && (x * x + y * y) <= 650 || // t than tilt
-                    taiko_array[i] == 's' && x * x + y * y < z * z && (x * x + y * y) > 650) { // s than shake
+                if (taiko_array[i] == 't' && x * x + y * y > z * z || // t than tilt
+                    taiko_array[i] == 'f' && (x * x + y * y) < z * z) { // s than flat
                     taiko_hit = true;
                 }
                 wait(0.2);
@@ -344,10 +344,12 @@ void load_song(void)
     char serialInBuffer[4];
     int serialCount = 0;
     
-    printf("start\r\n");
     // we will not get data until we receive the starting code, 'z'
     uLCD.cls();
     uLCD.printf("Now Loading...\n");
+    while (1)
+        if(pc.readable() && pc.getc() == 'z')
+            break; 
     while(i < 30) { // 30 is number of total notes
         if(pc.readable()) {
             serialInBuffer[serialCount] = pc.getc();
@@ -358,7 +360,8 @@ void load_song(void)
                 tone_array[1][i] = datatype_transform(serialInBuffer);
                 serialCount = 0;
                 i++;
-                printf(serialInBuffer);
+                
+                printf("%s ", serialInBuffer);
                 uLCD.locate(0, 3);
                 uLCD.printf("%d", i);
             }
@@ -419,7 +422,7 @@ int datatype_transform(char * tone)
     else if (strcmp(tone, "_B5") == 0)
         return B5;
     else
-        return C4;
+        return 0;
 }
 
 void mode_selection(void) 

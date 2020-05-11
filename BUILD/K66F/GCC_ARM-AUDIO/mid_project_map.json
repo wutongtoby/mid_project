@@ -1,100 +1,100 @@
 [
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 7430,
-            ".data": 473,
-            ".bss-delta": 0,
             ".text": 46490,
-            ".text-delta": 0
+            ".bss-delta": 0,
+            ".bss": 7430,
+            ".text-delta": 0,
+            ".data": 473,
+            ".data-delta": 0
         },
         "module": "../mbed-os-build"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 6859,
-            ".data": 506,
+            ".text": 46725,
             ".bss-delta": 0,
-            ".text": 46744,
-            ".text-delta": -5
+            ".bss": 6855,
+            ".text-delta": 0,
+            ".data": 510,
+            ".data-delta": 0
         },
         "module": "BUILD/K66F"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 50,
-            ".data": 16,
+            ".text": 302,
             ".bss-delta": 0,
-            ".text": 309,
-            ".text-delta": -1
+            ".bss": 46,
+            ".text-delta": 0,
+            ".data": 20,
+            ".data-delta": 0
         },
         "module": "[fill]"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 89,
-            ".data": 2472,
+            ".text": 34995,
             ".bss-delta": 0,
-            ".text": 35169,
-            ".text-delta": 174
+            ".bss": 89,
+            ".text-delta": 0,
+            ".data": 2472,
+            ".data-delta": 0
         },
         "module": "[lib]/c.a"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 0,
-            ".data": 0,
-            ".bss-delta": 0,
             ".text": 3452,
-            ".text-delta": 0
+            ".bss-delta": 0,
+            ".bss": 0,
+            ".text-delta": 0,
+            ".data": 0,
+            ".data-delta": 0
         },
         "module": "[lib]/gcc.a"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 0,
-            ".data": 1,
-            ".bss-delta": 0,
             ".text": 7389,
-            ".text-delta": 0
+            ".bss-delta": 0,
+            ".bss": 0,
+            ".text-delta": 0,
+            ".data": 1,
+            ".data-delta": 0
         },
         "module": "[lib]/m.a"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 28,
-            ".data": 4,
-            ".bss-delta": 0,
             ".text": 180,
-            ".text-delta": 0
+            ".bss-delta": 0,
+            ".bss": 28,
+            ".text-delta": 0,
+            ".data": 4,
+            ".data-delta": 0
         },
         "module": "[lib]/misc"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 0,
-            ".data": 0,
-            ".bss-delta": 0,
             ".text": 32,
-            ".text-delta": 0
+            ".bss-delta": 0,
+            ".bss": 0,
+            ".text-delta": 0,
+            ".data": 0,
+            ".data-delta": 0
         },
         "module": "[lib]/nosys.a"
     },
     {
         "size": {
-            ".data-delta": 0,
-            ".bss": 16,
-            ".data": 0,
-            ".bss-delta": 0,
             ".text": 40,
-            ".text-delta": 0
+            ".bss-delta": 0,
+            ".bss": 16,
+            ".text-delta": 0,
+            ".data": 0,
+            ".data-delta": 0
         },
         "module": "[lib]/stdc++.a"
     },
@@ -102,8 +102,8 @@
         "summary": {
             "static_ram_delta": 0,
             "static_ram": 17944,
-            "total_flash": 143277,
-            "total_flash_delta": 168
+            "total_flash": 143085,
+            "total_flash_delta": 0
         }
     }
 ]
