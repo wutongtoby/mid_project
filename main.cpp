@@ -12,6 +12,30 @@
 #include "DA7212.h"
 #include "uLCD_4DGL.h"
 #include <cmath>
+#define C4 262
+#define CS4 277
+#define D4 294
+#define DS4 311
+#define E4 330
+#define F4 350
+#define FS4 370
+#define G4 392
+#define GS4 415
+#define A4 440
+#define AS4 466
+#define B4 494
+#define C5 523
+#define CS5 5543
+#define D5 597
+#define DS5 622
+#define E5 660
+#define F5 698
+#define FS5 740
+#define G5 784
+#define GS5 830
+#define A5 880
+#define AS5 932
+#define B5 988
 
 Serial pc(USBTX, USBRX);
 DA7212 audio;
@@ -37,17 +61,18 @@ uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
 InterruptIn sw2(SW2); // use to pause the song
 DigitalIn sw3(SW3);
 
-int which_modeORsong; // control by DNN, will be 0, 1, 2, 3, 4
+int DNN_mode; // control by DNN, will be 0, 1, 2, 3, 4
+int DNN_song; // control by DNN, will be 0, 1, 2, 3
 int tone_array[4][10] = 
-{{330, 294, 262, 294, 330, 350, 392, 440, 494, 524},
-{0,0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0,0},
-{0,0,0,0,0,0,0,0,0,0}
+{{E4, D4, C4, D4, E4, F4, G4, A4, B4, C5},
+{C5, CS5, C5, F5, F5, GS5, C5, C5, CS5,CS5},
+{C4, D4, E4, F4, G4, A4, B4, C5, D5, E5},
+{A4 , B4, CS5, B4, A4, GS4, FS4, GS4, A4, B4}
 };
 // there is 4 song and with each have total 10 notes
 
 void taiko(void);
-char taiko_array[13] = {'a', 'b', 'b', 'a', 'b', 'b', 'a', 'a', 'b', 'a', '\0', '\0', '\0'};
+char taiko_array[15] = {'a', 'b', 'b', 'a', 'b', 'b', 'a', 'a', 'b', 'a', ' ', ' ', ' ', ' ', ' '};
 // the taiko_array note array, and will be 'a' or 'b'
 bool taiko_hit;
 // to record that we hit the taiko note or not
@@ -57,7 +82,7 @@ bool play_on = true;
 bool taiko_on = true;
 int which_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
-// maybe depend on which_modeORsong
+// maybe depend on DNN_song
 
 void taiko_hit_judge(char taiko_note);
 void playNote(int freq);
@@ -196,18 +221,27 @@ void DNN(void)
         if (gesture_index < label_num) {
             error_reporter->Report(config.output_message[gesture_index]);
             if (gesture_index == 0) {
-                if (which_modeORsong == 4)
-                    which_modeORsong = 0;
+                if (DNN_mode == 4)
+                    DNN_mode = 0;
                 else
-                    which_modeORsong++;
+                    DNN_mode++;
+
+                if (DNN_song == 3)
+                    DNN_song = 0;
+                else
+                    DNN_song++;
             }
             else {
-                if (which_modeORsong == 0)
-                    which_modeORsong = 4;
+                if (DNN_mode == 0)
+                    DNN_mode = 4;
                 else
-                    which_modeORsong--;
+                    DNN_mode--;
+                
+                if (DNN_song == 0)
+                    DNN_song = 3;
+                else
+                    DNN_song--;
             }
-            
         }
     }
     
@@ -215,17 +249,14 @@ void DNN(void)
 }
 
 void music(void)
-{
-    int i;
+{    
+    uLCD.cls();
+    uLCD.printf("\nNow playing song%d \n", which_song); 
+    if (taiko_on)
+        taiko_queue.call(taiko);
     // if the play_on is false, we will jumpt out from this song immediately
-    for (i = 0; i < 10 && play_on; i++) {
-        if (i == 0) {
-            uLCD.cls();
-            uLCD.printf("\nNow playing song%d \n", which_song); 
-            if (taiko_on)
-                taiko_queue.call(taiko);
-        }   
-            // the loop below will play the note for the duration of 1s
+    for (int i = 0; i < 10 && play_on; i++) {
+        // the loop below will play the note for the duration of 1s
         for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) 
             song_queue.call(playNote, tone_array[which_song][i]);
         wait(1.0);
@@ -243,10 +274,11 @@ void music(void)
 void taiko(void)
 {
     int i;
+    uLCD.cls();
+    uLCD.printf("\nNow playing song %d\n", which_song); 
     for (i = 0, taiko_score = 0; i < 10 && play_on; i++) {
-        uLCD.cls();
-        uLCD.printf("\nNow playing song%d \n", which_song); 
-        uLCD.printf("%c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3]);
+        uLCD.locate(0, 2);
+        uLCD.printf("%c %c %c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3], taiko_array[i+4], taiko_array[i+5]);
         taiko_hit = false;
         int idC = judge_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
         wait(1.0);
@@ -329,21 +361,18 @@ void taiko_hit_judge(char taiko_note)
 
 void mode_selection(void) 
 {
+    uLCD.cls();
+    uLCD.printf(" forward\n backward\n change songs\n load song\n taiko mode\n");
+    int now_DNN_mode = 0;
     while (1) {
-        uLCD.cls();
-        if (which_modeORsong == 0)
-            uLCD.printf("^forward\n backward\n change songs\n load song\n taiko mode\n");
-        else if (which_modeORsong == 1)
-            uLCD.printf(" forward\n^backward\n change songs\n load song\n taiko mode\n");
-        else if (which_modeORsong == 2)
-            uLCD.printf(" forward\n backward\n^change songs\n load song\n taiko mode\n");
-        else if (which_modeORsong == 3)
-            uLCD.printf(" forward\n backward\n change songs\n^load song\n taiko mode\n");
-        else 
-            uLCD.printf(" forward\n backward\n change songs\n load song\n^taiko mode\n");
-    
+        now_DNN_mode =DNN_mode; 
+        // get new DNN_mode value, to get new state input
+        
+        uLCD.locate(0, now_DNN_mode);
+        uLCD.printf("^");
+
         if (sw3 == 0) {// if the button been pressed
-            if (which_modeORsong == 0) { // forward
+            if (now_DNN_mode == 0) { // forward
                 if (which_song == 3)
                     which_song = 0;
                 else
@@ -353,7 +382,7 @@ void mode_selection(void)
                 music_queue.call(music);
                 return;
             }
-            else if (which_modeORsong == 1) { // backward
+            else if (now_DNN_mode == 1) { // backward
                 if (which_song == 0)
                     which_song = 3;
                 else
@@ -363,11 +392,12 @@ void mode_selection(void)
                 music_queue.call(music);
                 return;
             }
-            else if (which_modeORsong == 2)  {// change songs
+            else if (now_DNN_mode == 2)  {// change songs
+                wait(0.5);
                 selection_queue.call(song_selection);
                 return;
             }
-            else if (which_modeORsong == 3) { // load songs
+            else if (now_DNN_mode == 3) { // load songs
                 int i = 0;
                 char serialInBuffer[4];
                 int serialCount = 0;
@@ -394,25 +424,26 @@ void mode_selection(void)
                 return;
             }
         }
-        wait(0.1);
+        wait(0.05);
+        uLCD.locate(0, now_DNN_mode);
+        uLCD.printf(" ");
     }
 }
 
 void song_selection(void)
 {
     uLCD.cls();
+    int now_DNN_song = 0;
+    uLCD.printf(" song0\n song1\n song2\n song3\n");
+
     while (1) {
-        if (which_modeORsong == 0)
-            uLCD.printf("^song1\n song2\n song3\n song4\n");
-        else if (which_modeORsong == 1)
-            uLCD.printf(" song1\n^song2\n song3\n song4\n");
-        else if (which_modeORsong == 2)
-            uLCD.printf(" song1\n song2\n^song3\n song4\n");
-        else 
-            uLCD.printf(" song1\n song2\n song3\n^song4\n");
+        now_DNN_song = DNN_song;
+        uLCD.locate(0, now_DNN_song);
+        uLCD.printf("^");
 
         if (sw3 == 0) {// if the button been pressed
-            switch (which_modeORsong) {
+            wait(0.5); // add a little delay
+            switch (DNN_song) {
                 case 0: which_song = 0; break;
                 case 1: which_song = 1; break;
                 case 2: which_song = 2; break;
@@ -423,7 +454,8 @@ void song_selection(void)
             music_queue.call(music);
             return;
         }
-        wait(0.1);
-        uLCD.cls();
+        wait(0.05);
+        uLCD.locate(0, now_DNN_song);
+        uLCD.printf(" ");
     }
 }
