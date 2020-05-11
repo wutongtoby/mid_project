@@ -39,20 +39,20 @@
 
 Serial pc(USBTX, USBRX);
 DA7212 audio;
+uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
+InterruptIn sw2(SW2); // use to pause the song
+DigitalIn sw3(SW3);
 
 Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
 Thread sound_thread; // thread for playing single sound
 Thread song_mode_thread(osPriorityNormal); // thead for playing song and selection mode
-Thread judge_thread(osPriorityLow); // thread for taiko judgement
+Thread judge_thread(osPriorityNormal); // thread for taiko judgement
 
 EventQueue song_mode_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue sound_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue judge_queue(32 * EVENTS_EVENT_SIZE);
 
 
-uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
-InterruptIn sw2(SW2); // use to pause the song
-DigitalIn sw3(SW3);
 
 int DNN_mode; // control by DNN, will be 0, 1, 2, 3, 4
 int DNN_song; // control by DNN, will be 0, 1, 2, 3
@@ -62,32 +62,27 @@ int tone_array[4][10] =
 {C4, D4, E4, F4, G4, A4, B4, C5, D5, E5},
 {A4 , B4, CS5, B4, A4, GS4, FS4, GS4, A4, B4}
 };
-// there is 4 song and with each have total 10 notes
 
-char taiko_array[15] = {'a', 'b', 'b', 'a', 'b', 'b', 'a', 'a', 'b', 'a', ' ', ' ', ' ', ' ', ' '};
+char taiko_array[15] = {'t', 's', 's', 's', 't', 't', 't', 't', 't', 's', ' ', ' ', ' ', ' ', ' '};
 // the taiko_array note array, and will be 'a' or 'b'
-bool taiko_hit;
-// to record that we hit the taiko note or not
-int taiko_score;
 
-bool play_on = false;
-bool taiko_on = false;
-int which_song = 0; // will be 0, 1, 2, 3
+bool play_on = true;
+bool taiko_on = true;
+int load_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
 // maybe depend on DNN_song
 
-void taiko_hit_judge(char taiko_note);
 void playNote(int freq);
 void pause(void);  // to be triggered after interrupt
 void music(void); // to play song
-
+void song_load(void);
 void mode_selection(void);
 void song_selection(void);
-
+void DNN(void);
 int PredictGesture(float* output);
+
 int16_t waveform[kAudioTxBufferSize];
 extern float x, y, z;
-void DNN(void);
 
 int main(void) 
 {
@@ -240,9 +235,12 @@ void DNN(void)
 
 void music(void)
 {  
-    int i;  
+    int i, j;  
     uLCD.cls();
     uLCD.printf("\nNow playing song%d \n", which_song); 
+    bool taiko_hit;
+    // to record that we hit the taiko note or not
+    int taiko_score;
 
     // if the play_on is false, we will jumpt out from this song immediately
     for (i = 0, taiko_score = 0; i < 10 && play_on; i++) {
@@ -251,19 +249,21 @@ void music(void)
             // the loop below will play the note for the duration of 1s
             uLCD.printf("%c %c %c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3], taiko_array[i+4], taiko_array[i+5]);
         }
-        for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) 
+        for(j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) 
             sound_queue.call(playNote, tone_array[which_song][i]);
         
-        int idC;
         if (taiko_on) {
-            taiko_hit = false;
-            idC = judge_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
-        }
-        wait(1.0);
-        if (taiko_on) {
-            judge_queue.cancel(idC);
+            for (j = 0, taiko_hit = false; j < 5; j++) {
+                if (taiko_array[i] == 't' && x * x + y * y > z * z && (x * x + y * y) <= 650 || // t than tilt
+                    taiko_array[i] == 's' && x * x + y * y < z * z && (x * x + y * y) > 650) { // s than shake
+                    taiko_hit = true;
+                }
+                wait(0.2);
+            }
             if (taiko_hit) taiko_score++;
         }
+        else 
+            wait(1.0);
     }
 
     if (play_on) {
@@ -333,21 +333,10 @@ void pause(void)
     play_on = false;
     song_mode_queue.call(&mode_selection);
 }
-
-void taiko_hit_judge(char taiko_note)
+void load_onsg(void)
 {
-    // if tilt and not moving than we hit a
-    if (taiko_note == 'a' && x * x + y * y > z * z && 
-        (x * x + y * y) <= 650) {
-            taiko_hit = true;
-    }
-    // if not tilt but moving than we hit b
-    if (taiko_note == 'b' && x * x + y * y <= z * z && 
-        (x * x + y * y) > 650) {
-            taiko_hit = true;
-    }
-}
 
+}
 void mode_selection(void) 
 {
     uLCD.cls();
