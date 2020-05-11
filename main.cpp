@@ -25,8 +25,8 @@
 #define AS4 466
 #define B4 494
 #define C5 523
-#define CS5 5543
-#define D5 597
+#define CS5 554
+#define D5 587
 #define DS5 622
 #define E5 660
 #define F5 698
@@ -41,21 +41,14 @@ Serial pc(USBTX, USBRX);
 DA7212 audio;
 
 Thread DNN_thread(osPriorityNormal, 120 * 1024 /*120K stack size*/);
-// the thread for mode selection and song selection
-Thread selection_thread(osPriorityNormal);
-// the thread to use to play note
-Thread song_thread;
-Thread music_thread(osPriorityNormal);
+Thread sound_thread; // thread for playing single sound
+Thread song_mode_thread(osPriorityNormal); // thead for playing song and selection mode
+Thread judge_thread(osPriorityLow); // thread for taiko judgement
 
-// the thread to judge if we hit the taiko note
-Thread taiko_thread(osPriorityHigh);
-Thread judge_thread(osPriorityNormal);
-
-EventQueue selection_queue(32 * EVENTS_EVENT_SIZE);
-EventQueue song_queue(32 * EVENTS_EVENT_SIZE);
+EventQueue song_mode_queue(32 * EVENTS_EVENT_SIZE);
+EventQueue sound_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue judge_queue(32 * EVENTS_EVENT_SIZE);
-EventQueue music_queue(32 * EVENTS_EVENT_SIZE);
-EventQueue taiko_queue(32 * EVENTS_EVENT_SIZE);
+
 
 uLCD_4DGL uLCD(D1, D0, D2); // serial tx, serial rx, reset pin;
 InterruptIn sw2(SW2); // use to pause the song
@@ -65,30 +58,28 @@ int DNN_mode; // control by DNN, will be 0, 1, 2, 3, 4
 int DNN_song; // control by DNN, will be 0, 1, 2, 3
 int tone_array[4][10] = 
 {{E4, D4, C4, D4, E4, F4, G4, A4, B4, C5},
-{C5, CS5, C5, F5, F5, GS5, C5, C5, CS5,CS5},
+{E5, D5, C5, B4, A4, G4, F4, E4, D4, C4},
 {C4, D4, E4, F4, G4, A4, B4, C5, D5, E5},
 {A4 , B4, CS5, B4, A4, GS4, FS4, GS4, A4, B4}
 };
 // there is 4 song and with each have total 10 notes
 
-void taiko(void);
 char taiko_array[15] = {'a', 'b', 'b', 'a', 'b', 'b', 'a', 'a', 'b', 'a', ' ', ' ', ' ', ' ', ' '};
 // the taiko_array note array, and will be 'a' or 'b'
 bool taiko_hit;
 // to record that we hit the taiko note or not
 int taiko_score;
 
-bool play_on = true;
-bool taiko_on = true;
+bool play_on = false;
+bool taiko_on = false;
 int which_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
 // maybe depend on DNN_song
 
 void taiko_hit_judge(char taiko_note);
 void playNote(int freq);
-void pause(void); 
-// to be triggered after interrupt
-void music(void);
+void pause(void);  // to be triggered after interrupt
+void music(void); // to play song
 
 void mode_selection(void);
 void song_selection(void);
@@ -100,15 +91,14 @@ void DNN(void);
 
 int main(void) 
 {
-    music_thread.start(callback(&music_queue, &EventQueue::dispatch_forever));
-    selection_thread.start(callback(&selection_queue, &EventQueue::dispatch_forever));
-    song_thread.start(callback(&song_queue, &EventQueue::dispatch_forever));
+    sound_thread.start(callback(&sound_queue, &EventQueue::dispatch_forever));
     judge_thread.start(callback(&judge_queue, &EventQueue::dispatch_forever));
-    taiko_thread.start(callback(&taiko_queue, &EventQueue::dispatch_forever));
-    sw2.rise(&pause);
+    song_mode_thread.start(callback(&song_mode_queue, &EventQueue::dispatch_forever));
     DNN_thread.start(&DNN);
-
-    music_queue.call(music);
+    
+    sw2.rise(&pause);
+    song_mode_queue.call(&music);
+    
     while(true);
 }
 
@@ -249,20 +239,35 @@ void DNN(void)
 }
 
 void music(void)
-{    
+{  
+    int i;  
     uLCD.cls();
     uLCD.printf("\nNow playing song%d \n", which_song); 
-    if (taiko_on)
-        taiko_queue.call(taiko);
+
     // if the play_on is false, we will jumpt out from this song immediately
-    for (int i = 0; i < 10 && play_on; i++) {
-        // the loop below will play the note for the duration of 1s
+    for (i = 0, taiko_score = 0; i < 10 && play_on; i++) {
+        if (taiko_on) {
+            uLCD.locate(0, 5);
+            // the loop below will play the note for the duration of 1s
+            uLCD.printf("%c %c %c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3], taiko_array[i+4], taiko_array[i+5]);
+        }
         for(int j = 0; j < kAudioSampleFrequency / kAudioTxBufferSize; ++j) 
-            song_queue.call(playNote, tone_array[which_song][i]);
+            sound_queue.call(playNote, tone_array[which_song][i]);
+        
+        int idC;
+        if (taiko_on) {
+            taiko_hit = false;
+            idC = judge_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
+        }
         wait(1.0);
+        if (taiko_on) {
+            judge_queue.cancel(idC);
+            if (taiko_hit) taiko_score++;
+        }
     }
+
     if (play_on) {
-        song_queue.call(playNote, 0);
+        sound_queue.call(playNote, 0);
         uLCD.cls();
         uLCD.printf("\nSong %d is over\n", which_song);
         if (taiko_on) {
@@ -271,22 +276,6 @@ void music(void)
     }
 }
 
-void taiko(void)
-{
-    int i;
-    uLCD.cls();
-    uLCD.printf("\nNow playing song %d\n", which_song); 
-    for (i = 0, taiko_score = 0; i < 10 && play_on; i++) {
-        uLCD.locate(0, 2);
-        uLCD.printf("%c %c %c %c %c %c\n", taiko_array[i], taiko_array[i+1], taiko_array[i+2], taiko_array[i+3], taiko_array[i+4], taiko_array[i+5]);
-        taiko_hit = false;
-        int idC = judge_queue.call_every(0.2, taiko_hit_judge, taiko_array[i]);
-        wait(1.0);
-        judge_queue.cancel(idC);
-        if (taiko_hit) taiko_score++;
-    }
-}
-// Return the result of the last prediction
 int PredictGesture(float* output)  
 {
     // How many times the most recent gesture has been matched in a row
@@ -339,10 +328,10 @@ void playNote(int freq)
 
 void pause(void) 
 {
-    song_queue.call(playNote, 0);
+    sound_queue.call(playNote, 0);
     taiko_on = false;
     play_on = false;
-    selection_queue.call(&mode_selection);
+    song_mode_queue.call(&mode_selection);
 }
 
 void taiko_hit_judge(char taiko_note)
@@ -376,10 +365,10 @@ void mode_selection(void)
                 if (which_song == 3)
                     which_song = 0;
                 else
-                    which_song = 0;
+                    which_song++;
                 taiko_on = false;
                 play_on = true;
-                music_queue.call(music);
+                song_mode_queue.call(music);
                 return;
             }
             else if (now_DNN_mode == 1) { // backward
@@ -389,12 +378,12 @@ void mode_selection(void)
                     which_song--;
                 taiko_on = false;
                 play_on = true;
-                music_queue.call(music);
+                song_mode_queue.call(music);
                 return;
             }
             else if (now_DNN_mode == 2)  {// change songs
                 wait(0.5);
-                selection_queue.call(song_selection);
+                song_mode_queue.call(song_selection);
                 return;
             }
             else if (now_DNN_mode == 3) { // load songs
@@ -420,7 +409,7 @@ void mode_selection(void)
                 which_song = 0;
                 taiko_on = true;
                 play_on = true;
-                music_queue.call(music);
+                song_mode_queue.call(music);
                 return;
             }
         }
@@ -451,7 +440,7 @@ void song_selection(void)
             }
             taiko_on = false;
             play_on = true;
-            music_queue.call(music);
+            song_mode_queue.call(music);
             return;
         }
         wait(0.05);
