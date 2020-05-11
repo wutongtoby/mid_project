@@ -12,6 +12,8 @@
 #include "DA7212.h"
 #include "uLCD_4DGL.h"
 #include <cmath>
+#include <cstring>
+
 #define C4 262
 #define CS4 277
 #define D4 294
@@ -68,21 +70,23 @@ char taiko_array[15] = {'t', 's', 's', 's', 't', 't', 't', 't', 't', 's', ' ', '
 
 bool play_on = true;
 bool taiko_on = true;
-int load_song = 0; // will be 0, 1, 2, 3
+int which_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
 // maybe depend on DNN_song
+
 
 void playNote(int freq);
 void pause(void);  // to be triggered after interrupt
 void music(void); // to play song
-void song_load(void);
+void load_song(void);
+int datatype_transform(char*);
 void mode_selection(void);
 void song_selection(void);
 void DNN(void);
 int PredictGesture(float* output);
 
 int16_t waveform[kAudioTxBufferSize];
-extern float x, y, z;
+extern float x, y, z; // to get data from the acceremometer
 
 int main(void) 
 {
@@ -333,10 +337,91 @@ void pause(void)
     play_on = false;
     song_mode_queue.call(&mode_selection);
 }
-void load_onsg(void)
-{
 
+void load_song(void)
+{
+    int i = 0;
+    char serialInBuffer[4];
+    int serialCount = 0;
+    
+    printf("start\r\n");
+    // we will not get data until we receive the starting code, 'z'
+    uLCD.cls();
+    uLCD.printf("Now Loading...\n");
+    while(i < 30) { // 30 is number of total notes
+        if(pc.readable()) {
+            serialInBuffer[serialCount] = pc.getc();
+            serialCount++;
+            if(serialCount == 3) { 
+            // which means we have got three char 0, 1, 2
+                serialInBuffer[serialCount] = '\0';
+                tone_array[1][i] = datatype_transform(serialInBuffer);
+                serialCount = 0;
+                i++;
+                printf(serialInBuffer);
+                uLCD.locate(0, 3);
+                uLCD.printf("%d", i);
+            }
+        }
+    }
+    uLCD.cls();
+    uLCD.printf("Loading complete1\n");
 }
+
+int datatype_transform(char * tone)
+{
+    if (strcmp(tone, "_C4") == 0)
+        return C4;
+    else if (strcmp(tone, "CS4") == 0)
+        return CS4;
+    else if (strcmp(tone, "_D4") == 0)
+        return D4;
+    else if (strcmp(tone, "DS4") == 0)
+        return DS4;
+    else if (strcmp(tone, "_E4") == 0)
+        return E4;
+    else if (strcmp(tone, "_F4") == 0)
+        return F4;
+    else if (strcmp(tone, "FS4") == 0)
+        return FS4;
+    else if (strcmp(tone, "_G4") == 0)
+        return G4;
+    else if (strcmp(tone, "GS4") == 0)
+        return GS4;
+    else if (strcmp(tone, "_A4") == 0)
+        return A4;
+    else if (strcmp(tone, "AS4") == 0)
+        return AS4;
+    else if (strcmp(tone, "_B4") == 0)
+        return B4;
+    else if (strcmp(tone, "_C5") == 0)
+        return C5;
+    else if (strcmp(tone, "CS5") == 0)
+        return CS5;
+    else if (strcmp(tone, "_D5") == 0)
+        return D5;
+    else if (strcmp(tone, "DS5") == 0)
+        return DS5;
+    else if (strcmp(tone, "_E5") == 0)
+        return E5;
+    else if (strcmp(tone, "_F5") == 0)
+        return F5;
+    else if (strcmp(tone, "FS5") == 0)
+        return FS5;
+    else if (strcmp(tone, "_G5") == 0)
+        return G5;
+    else if (strcmp(tone, "GS5") == 0)
+        return GS5;
+    else if (strcmp(tone, "_A5") == 0)
+        return A5;
+    else if (strcmp(tone, "AS5") == 0)
+        return AS5;
+    else if (strcmp(tone, "_B5") == 0)
+        return B5;
+    else
+        return C4;
+}
+
 void mode_selection(void) 
 {
     uLCD.cls();
@@ -376,23 +461,8 @@ void mode_selection(void)
                 return;
             }
             else if (now_DNN_mode == 3) { // load songs
-                int i = 0;
-                char serialInBuffer[4];
-                int serialCount = 0;
-                while (pc.getc() == 'z');
-                while(i < 30) { // 30 is number of total notes
-                    if(pc.readable()) {
-                        serialInBuffer[serialCount] = pc.getc();
-                        serialCount++;
-                        if(serialCount == 3) {
-                            serialInBuffer[serialCount] = '\0';
-                            tone_array[1][i] = (int) atoi(serialInBuffer);
-                            printf("%d\r\n", tone_array[1][i]);
-                            serialCount = 0;
-                            i++;
-                        }
-                    }
-                }
+                song_mode_queue.call(load_song);
+                return;
             }
             else {// taiko mode
                 which_song = 0;

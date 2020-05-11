@@ -1,109 +1,109 @@
 [
     {
-        "module": "../mbed-os-build",
         "size": {
-            ".text": 46490,
-            ".text-delta": 0,
-            ".data": 473,
+            ".data-delta": 0,
             ".bss": 7430,
-            ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".data": 473,
+            ".bss-delta": 0,
+            ".text": 46490,
+            ".text-delta": 0
+        },
+        "module": "../mbed-os-build"
     },
     {
-        "module": "BUILD/K66F",
         "size": {
-            ".text": 45999,
-            ".text-delta": -20,
-            ".data": 506,
+            ".data-delta": 0,
             ".bss": 6859,
-            ".data-delta": 0,
-            ".bss-delta": -5
-        }
+            ".data": 506,
+            ".bss-delta": 0,
+            ".text": 46744,
+            ".text-delta": -5
+        },
+        "module": "BUILD/K66F"
     },
     {
-        "module": "[fill]",
         "size": {
-            ".text": 308,
-            ".text-delta": 4,
-            ".data": 16,
+            ".data-delta": 0,
             ".bss": 50,
-            ".data-delta": 0,
-            ".bss-delta": -3
-        }
+            ".data": 16,
+            ".bss-delta": 0,
+            ".text": 309,
+            ".text-delta": -1
+        },
+        "module": "[fill]"
     },
     {
-        "module": "[lib]/c.a",
         "size": {
-            ".text": 35347,
-            ".text-delta": 0,
-            ".data": 2472,
+            ".data-delta": 0,
             ".bss": 89,
-            ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".data": 2472,
+            ".bss-delta": 0,
+            ".text": 35169,
+            ".text-delta": 174
+        },
+        "module": "[lib]/c.a"
     },
     {
-        "module": "[lib]/gcc.a",
         "size": {
+            ".data-delta": 0,
+            ".bss": 0,
+            ".data": 0,
+            ".bss-delta": 0,
             ".text": 3452,
-            ".text-delta": 0,
-            ".data": 0,
-            ".bss": 0,
-            ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".text-delta": 0
+        },
+        "module": "[lib]/gcc.a"
     },
     {
-        "module": "[lib]/m.a",
         "size": {
-            ".text": 7389,
-            ".text-delta": 0,
+            ".data-delta": 0,
+            ".bss": 0,
             ".data": 1,
-            ".bss": 0,
-            ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".bss-delta": 0,
+            ".text": 7389,
+            ".text-delta": 0
+        },
+        "module": "[lib]/m.a"
     },
     {
-        "module": "[lib]/misc",
         "size": {
-            ".text": 180,
-            ".text-delta": 0,
-            ".data": 4,
+            ".data-delta": 0,
             ".bss": 28,
-            ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".data": 4,
+            ".bss-delta": 0,
+            ".text": 180,
+            ".text-delta": 0
+        },
+        "module": "[lib]/misc"
     },
     {
-        "module": "[lib]/nosys.a",
         "size": {
-            ".text": 32,
-            ".text-delta": 0,
-            ".data": 0,
+            ".data-delta": 0,
             ".bss": 0,
-            ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".data": 0,
+            ".bss-delta": 0,
+            ".text": 32,
+            ".text-delta": 0
+        },
+        "module": "[lib]/nosys.a"
     },
     {
-        "module": "[lib]/stdc++.a",
         "size": {
-            ".text": 40,
-            ".text-delta": 0,
-            ".data": 0,
-            ".bss": 16,
             ".data-delta": 0,
-            ".bss-delta": 0
-        }
+            ".bss": 16,
+            ".data": 0,
+            ".bss-delta": 0,
+            ".text": 40,
+            ".text-delta": 0
+        },
+        "module": "[lib]/stdc++.a"
     },
     {
         "summary": {
-            "total_flash": 142709,
+            "static_ram_delta": 0,
             "static_ram": 17944,
-            "total_flash_delta": -16,
-            "static_ram_delta": -8
+            "total_flash": 143277,
+            "total_flash_delta": 168
         }
     }
 ]
