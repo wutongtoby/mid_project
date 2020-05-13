@@ -275,4 +275,4 @@ BUILD/K66F/GCC_ARM-AUDIO/main.o: main.cpp \
  /home/wutong/ee2405/mbed-os-build/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/drivers/fsl_sai_edma.h \
  /home/wutong/ee2405/mbed-os-build/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/drivers/fsl_sai.h \
  /home/wutong/ee2405/mbed-os-build/targets/TARGET_Freescale/TARGET_MCUXpresso_MCUS/TARGET_K66F/drivers/fsl_edma.h \
- 4DGL-uLCD-SE/uLCD_4DGL.h
+ 4DGL-uLCD-SE/uLCD_4DGL.h tone.h

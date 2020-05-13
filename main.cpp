@@ -13,31 +13,7 @@
 #include "uLCD_4DGL.h"
 #include <cmath>
 #include <cstring>
-
-#define C4 262
-#define CS4 277
-#define D4 294
-#define DS4 311
-#define E4 330
-#define F4 350
-#define FS4 370
-#define G4 392
-#define GS4 415
-#define A4 440
-#define AS4 466
-#define B4 494
-#define C5 523
-#define CS5 554
-#define D5 587
-#define DS5 622
-#define E5 660
-#define F5 698
-#define FS5 740
-#define G5 784
-#define GS5 830
-#define A5 880
-#define AS5 932
-#define B5 988
+#include "tone.h"
 
 Serial pc(USBTX, USBRX);
 DA7212 audio;
@@ -54,8 +30,6 @@ EventQueue song_mode_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue sound_queue(32 * EVENTS_EVENT_SIZE);
 EventQueue judge_queue(32 * EVENTS_EVENT_SIZE);
 
-
-
 int DNN_mode = 3; // control by DNN, will be 0, 1, 2, 3, 4
 int DNN_song; // control by DNN, will be 0, 1, 2, 3
 int tone_array[4][10] = 
@@ -64,16 +38,15 @@ int tone_array[4][10] =
 {C4, D4, E4, F4, G4, A4, B4, C5, D5, E5},
 {A4 , B4, CS5, B4, A4, GS4, FS4, GS4, A4, B4}
 };
-
 char taiko_array[15] = {'t', 'f', 'f', 'f', 't', 't', 't', 't', 't', 'f', ' ', ' ', ' ', ' ', ' '};
 // the taiko_array note array
-
 bool play_on = true;
 bool taiko_on = true;
 int which_song = 0; // will be 0, 1, 2, 3
 // when we select a song we will give this variable a value
 // maybe depend on DNN_song
-
+int16_t waveform[kAudioTxBufferSize];
+extern float x, y, z; // to get data from the acceremometer
 
 void playNote(int freq);
 void pause(void);  // to be triggered after interrupt
@@ -84,9 +57,6 @@ void mode_selection(void);
 void song_selection(void);
 void DNN(void);
 int PredictGesture(float* output);
-
-int16_t waveform[kAudioTxBufferSize];
-extern float x, y, z; // to get data from the acceremometer
 
 int main(void) 
 {
